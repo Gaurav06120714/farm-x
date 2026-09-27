@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>FARM-X Herd Forecast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -114,6 +115,11 @@ ul.plain li { margin: 2px 0; }
   padding: 7px 9px; border-radius: 6px; z-index: 10; max-width: 240px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
 #tip b { font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .row td, .filter { transition: background-color .12s ease; } }
+.pages { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.pages a { padding: 9px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14px; }
+.pages a[aria-current="page"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.main, .lower { grid-template-columns: 1fr !important; }
+[data-page]:not(.on) { display: none !important; }
 </style>
 
 <div class="wrap">
@@ -125,8 +131,11 @@ ul.plain li { margin: 2px 0; }
     <div class="muted">Forecast as of <span class="mono" id="asof"></span></div>
   </header>
   <div class="banner" id="banner" hidden></div>
+  <nav class="pages" aria-label="Dashboards">
+    <a href="#herd">1 · Herd overview</a><a href="#cow">2 · Cow detail</a><a href="#milkers">3 · Risk by milker</a><a href="#ai">4 · AI early warning</a>
+  </nav>
 
-  <section class="summary" aria-label="Herd summary">
+  <section class="summary" aria-label="Herd summary" data-page="herd">
     <div class="stat"><span class="v mono" id="s-cows"></span><span class="l">Cows forecast today</span></div>
     <div class="stat"><span class="v mono" id="s-high"></span><span class="l"><span class="chip High">High risk</span> — test today</span></div>
     <div class="stat"><span class="v mono" id="s-mod"></span><span class="l"><span class="chip Moderate">Moderate</span> — watch closely</span></div>
@@ -134,7 +143,7 @@ ul.plain li { margin: 2px 0; }
   </section>
 
   <div class="main">
-    <section class="panel" aria-labelledby="list-h">
+    <section class="panel" aria-labelledby="list-h" data-page="herd">
       <h2 id="list-h">Cows ranked by 14-day risk</h2>
       <div class="toolbar" role="group" aria-label="Filter by risk">
         <button class="filter" id="f-all" data-f="all" aria-pressed="true">All</button>
@@ -151,7 +160,8 @@ ul.plain li { margin: 2px 0; }
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="cow-id" id="detail">
+    <section class="panel" aria-labelledby="cow-id" id="detail" data-page="cow">
+      <p style="margin:0 0 8px"><a href="#herd" style="color:var(--accent)">‹ Back to herd list</a> · click any cow in the herd list to open it here</p>
       <div class="cowhead">
         <span class="id" id="cow-id"></span>
         <span id="cow-chip"></span>
@@ -187,13 +197,13 @@ ul.plain li { margin: 2px 0; }
   </div>
 
   <div class="lower">
-    <section class="panel" aria-labelledby="milk-h">
+    <section class="panel" aria-labelledby="milk-h" data-page="milkers">
       <h2 id="milk-h">Risk by milker</h2>
       <p class="muted" style="margin:4px 0 0">Expected clinical cases in the next 14 days among the cows each milker handles. A shared milker can spread contagious mastitis between farms.</p>
       <div class="bars" id="milkers"></div>
     </section>
 
-    <section class="panel" aria-labelledby="ev-h">
+    <section class="panel" aria-labelledby="ev-h" data-page="ai">
       <h2 id="ev-h">How far ahead it warns</h2>
       <p class="muted" style="margin:4px 0 10px">Tested on cows the model never saw. An alarm means the alert stayed on for 2 days in a row.</p>
       <div style="overflow-x:auto">
@@ -256,7 +266,7 @@ window.DATA = {"source":"Synthetic demo data (simulate_farm.py), not a real farm
         <td class="why">${esc(c.reasons[0] || "—")}</td></tr>`).join("")
       || `<tr><td colspan="5" class="muted">No cows match this filter.</td></tr>`;
   }
-  $("rows").addEventListener("click", e => { const r = e.target.closest(".row"); if (r) select(r.dataset.id); });
+  $("rows").addEventListener("click", e => { const r = e.target.closest(".row"); if (r) { select(r.dataset.id); location.hash = "cow"; } });
   $("rows").addEventListener("keydown", e => { const r = e.target.closest(".row");
     if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(r.dataset.id); } });
   document.querySelectorAll(".filter").forEach(b => b.addEventListener("click", () => {
@@ -355,4 +365,13 @@ window.DATA = {"source":"Synthetic demo data (simulate_farm.py), not a real farm
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => select(selected));
   new MutationObserver(() => select(selected)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 })();
+
+function showPage() {
+  const pg = ["herd","cow","milkers","ai"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "herd";
+  document.querySelectorAll("[data-page]").forEach(el => el.classList.toggle("on", el.dataset.page === pg));
+  document.querySelectorAll(".pages a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + pg ? "page" : "false"));
+  window.scrollTo(0, 0);
+  if (pg === "cow") dispatchEvent(new Event("resize")); // redraw charts at the now-visible width
+}
+addEventListener("hashchange", showPage); showPage();
 </script>
